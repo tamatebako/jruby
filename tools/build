@@ -12,8 +12,9 @@
 #               digest zeroed, spec 03 §7; the one-or-many provides list
 #               declares every covered platform) and the layout
 #               declaration at /lib/tebako/layout.yaml (NO interpreter —
-#               spec 33 §5), image with tfs-cli's in-process dwarfs-t
-#               writer, read-back gates, sidecar + release-tier manifest.
+#               spec 33 §5), image with tfs-cli's in-process writer
+#               (limnifs, the default format), read-back gates, sidecar +
+#               release-tier manifest.
 #
 #   ROLE=pair   per-triplet: pair the wrapper exe (the 2.5.0
 #               tebako-runtime-launcher — byte-identical to
@@ -296,14 +297,14 @@ if [ "$ROLE" = image ]; then
   [ -x "$ROOT$INTERPRETER" ] || { echo "no $INTERPRETER in the staged tree"; exit 1; }
   [ -f "$ROOT/lib/jruby.jar" ] || { echo "no lib/jruby.jar in the staged tree — the whole runtime is that jar"; exit 1; }
 
-  # The dwarfs-t writer has no symlink node type (verified 2026-09-06 on
-  # the graalvm tree: a symlink lands as a 0-byte regular-file node that
-  # stat cannot open — silent zeroing; the named ecosystem follow-up
-  # stands: the writer should store link nodes or refuse loudly). The
-  # stage dereferences every symlink whose terminal target is a real file
-  # INSIDE the staged tree; a dangling or tree-escaping link is a named
-  # error here, never a silent 0-byte node in the image.
-  step "dereference in-tree symlinks (the writer has no link node type)"
+  # Symlinks are dereferenced to plain files so the staged tree has ONE
+  # shape on every platform (the step predates the limnifs writer, which
+  # does carry symlink inodes; the deref is retained — content-addressed
+  # drops dedup the duplicated content, and no leg depends on host
+  # symlink semantics). Every link whose terminal target is a real file
+  # INSIDE the staged tree is resolved; a dangling or tree-escaping link
+  # is a named error here, never a silent surprise in the image.
+  step "dereference in-tree symlinks (one tree shape on every platform)"
   resolve_link() {
     local p="$1" t d n=0
     while [ -L "$p" ]; do
@@ -367,10 +368,10 @@ if [ "$ROLE" = image ]; then
       -e "s|@@API_VERSION@@|$API_VERSION|g" \
       "$FEEDSTOCK/manifests/layout.yaml" > "$ROOT/lib/tebako/layout.yaml"
 
-  step "tfs mkimage (the in-process dwarfs-t writer)"
+  step "tfs mkimage (the in-process writer — limnifs, the default format)"
   IMG="$OUT/$IMAGE_STEM.tfs"
   rm -f "$IMG"
-  "$TFS_CLI" mkimage --format dwarfs "$ROOT" --output "$IMG"
+  "$TFS_CLI" mkimage --format limnifs "$ROOT" --output "$IMG"
   sha=$(sha256_of "$IMG")
   echo "image: $IMG"
   echo "sha256: $sha"
@@ -574,7 +575,7 @@ provides:
   platforms: universal
   capabilities: {exec: true, read: true}
 YAML
-  "$TFS_CLI" mkimage --format dwarfs "$SMOKE_STAGE" --output "$STORE/payloads/rbcsmoke/0.1.0.tfs"
+  "$TFS_CLI" mkimage --format limnifs "$SMOKE_STAGE" --output "$STORE/payloads/rbcsmoke/0.1.0.tfs"
   chmod 444 "$STORE/payloads/rbcsmoke/0.1.0.tfs"
   psha="$(sha256_of "$STORE/payloads/rbcsmoke/0.1.0.tfs")"
   printf '%s  %s\n' "$psha" "0.1.0.tfs" > "$STORE/payloads/rbcsmoke/0.1.0.tfs.sha256"
@@ -606,7 +607,7 @@ RUBY
       -e 's/constraint: ">= 10, < 11"}/constraint: ">= 10, < 11", abi: arm64-darwin-23}/' \
       "$SMOKE_STAGE/__tpkg__/manifest.yaml" > "$cext_stage/__tpkg__/manifest.yaml"
   mkdir -p "$STORE/payloads/cextapp"
-  "$TFS_CLI" mkimage --format dwarfs "$cext_stage" --output "$STORE/payloads/cextapp/0.1.0.tfs"
+  "$TFS_CLI" mkimage --format limnifs "$cext_stage" --output "$STORE/payloads/cextapp/0.1.0.tfs"
   chmod 444 "$STORE/payloads/cextapp/0.1.0.tfs"
   csha="$(sha256_of "$STORE/payloads/cextapp/0.1.0.tfs")"
   printf '%s  %s\n' "$csha" "0.1.0.tfs" > "$STORE/payloads/cextapp/0.1.0.tfs.sha256"

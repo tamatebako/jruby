@@ -152,8 +152,8 @@ tools:
       windows-ucrt64: "86727f043dd0cfac76ee074669a3a1fab5732f865fa70b3189f12f72f92c71d4"
 
 image:
-  format: dwarfs
-  # .tfs everywhere (the tebako fs image — DwarFS-T format; normal dwarfs
-  # readers cannot read it)
+  format: limnifs
+  # .tfs everywhere (the tebako fs image — LimniFS, the default format;
+  # the store extension stays .tfs regardless of format)
   extension:
     default: tfs
