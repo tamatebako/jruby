@@ -119,37 +119,39 @@ runtime:
   mount_root_override: false       # closed default — nothing in the composed JVM follows TEBAKO_MOUNT_ROOT (spec 00 §9)
   # The tebako product line the pair builds against. jruby has ONE line:
   # 2.5.0 is the FIRST spec-33-capable launcher (the owner-exe finding —
-  # tebako#552); there is no older line to keep. wrapper_sha256 digests
-  # are the v2.5.0 release's monolith SHA256SUMS entries (fetched
-  # 2026-09-07).
-  wrapper_tebako: "2.5.0"
+  # tebako#552); there is no older line to keep. v2.8.21 (2026-09-28)
+  # moves the line to the 64 MiB limnifs inline-metadata ceiling +
+  # min_runtime_tebako floor launcher (tebako#666). wrapper_sha256
+  # digests are the v2.8.21 release's monolith SHA256SUMS entries
+  # (fetched 2026-09-28).
+  wrapper_tebako: "2.8.21"
   wrapper_sha256:
-    macos-arm64: "b4725da9e99425acbda3d189738f78773b7658d63c015cf03ef4e2f035e94d28"
-    linux-gnu-x86_64: "02272c8ece40c5cfadc9cb77330d68f120b8eddd8ec3b8d2360ef56450d1f245"
-    windows-ucrt64: "6a69fa069f4f502791fd165b7b7795b59ac6b62690d00631d075abc29d7e1bcd"
+    macos-arm64: "e6269526d268f5ef0b6718fbbde02efe7c957733adca9971c755ad544710f6a2"
+    linux-gnu-x86_64: "9f4a610d73b90b77d6bff3ff0e55fb691f74a54d52bd342ada59917195521d9a"
+    windows-ucrt64: "b2b98454c626020c50288818568d0e743c0dc7a8d57cdf91d8a8d48489eafdad"
 
 # Factory tools used by tools/build: the tfs CLI (the in-process imager)
 # and tebako-shim (the composed smoke's dispatcher) from the
-# tamatebako/tebako release. The digests are the v2.5.0 monolith
-# SHA256SUMS entries (fetched 2026-09-07); the fetch steps cross-check
-# against the monolith. v2.5.0 is REQUIRED: tfs mkimage re-serializes the
-# embedded manifest THROUGH the tpkg model, and only the 2.5.0 model
-# round-trips on_runtime + the widened requires grammar (the 2.4.0 CLI
-# would silently strip the owner edge). (link-unit rides the pin shape
-# for the day a leg needs the preload grant; the jvm layout declares none
-# — spec 33 §5.)
+# tamatebako/tebako release. The digests are the v2.8.21 monolith
+# SHA256SUMS entries (fetched 2026-09-28); the fetch steps cross-check
+# against the monolith. v2.5.0 is the model floor: tfs mkimage
+# re-serializes the embedded manifest THROUGH the tpkg model, and only
+# the 2.5.0+ model round-trips on_runtime + the widened requires grammar
+# (the 2.4.0 CLI would silently strip the owner edge). (link-unit rides
+# the pin shape for the day a leg needs the preload grant; the jvm
+# layout declares none — spec 33 §5.)
 tools:
   repo: "tamatebako/tebako"
-  release: "v2.5.0"
+  release: "v2.8.21"
   sha256:
     tfs:
-      macos-arm64: "0e1f84c1259c3e290c68c329fa763a0bf9f6665efb321e24175013e249061b35"
-      linux-gnu-x86_64: "205b44d9eca7d327215ac0ae394fb74b310581836b56ee080999b873abe49787"
-      windows-ucrt64: "06f0d667ef3ecbf8ad717215872570901cfe31f9b6f68c7fca3fcfb975e6c32d"
+      macos-arm64: "38f4493c1a65d37ace603db171c23d9a4580bd6053e3a3007800fbcf7a494d83"
+      linux-gnu-x86_64: "8b752cb7bc8337960bf77f36cc375e6bc6f75b1d78e6d50c0000a33b26be51b9"
+      windows-ucrt64: "e5128ef8be90813bf9300dda39f204fff39f6d1e3eb4963128cbdfaeed88744a"
     tebako-shim:
-      macos-arm64: "ad6a88373abc721c7d7e5e6f482d3fd6af2e99e0117ddcfdf7529e77eb090139"
-      linux-gnu-x86_64: "991a66026944b3b5db88278a1f691ed91b85a0a04bd588b30831ed23312724da"
-      windows-ucrt64: "86727f043dd0cfac76ee074669a3a1fab5732f865fa70b3189f12f72f92c71d4"
+      macos-arm64: "9390ac1fff96df43ac847e271a3ff854a53d5f02baad1f3674cc8596b36ff9e6"
+      linux-gnu-x86_64: "f07b025832eaf9ba1c416e306d607791e2a90418a3174b62d4510a7eba9d1f91"
+      windows-ucrt64: "fd3da369ddc795f9f2228ce5dbfe3c2ddc7fed2c4337974d44c461d88b4bdaf0"
 
 image:
   format: limnifs
