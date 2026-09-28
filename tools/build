@@ -507,18 +507,21 @@ EOF
 
   # The owner entry: the PUBLISHED temurin pair (releases are the
   # interface), sha256-verified against BOTH the recipe pins and the
-  # owner release's own SHA256SUMS (the two-anchor rule).
+  # owner release's own per-asset .sha256 sidecars (the two-anchor rule —
+  # shard-era releases ship no monolithic SHA256SUMS.txt; each sidecar
+  # sits next to its asset).
   obase="https://github.com/$OWNER_REPO/releases/download/$OWNER_RELEASE"
   curl -sL --fail -o "$WORK/owner.exe" "$obase/$OWNER_STEM"
   curl -sL --fail -o "$WORK/owner.tfs" "$obase/$OWNER_STEM.tfs"
   curl -sL --fail -o "$WORK/owner.manifest.json" "$obase/$OWNER_STEM.manifest.json"
-  curl -sL --fail -o "$WORK/owner-SHA256SUMS.txt" "$obase/SHA256SUMS.txt"
+  curl -sL --fail -o "$WORK/owner.exe.sha256" "$obase/$OWNER_STEM.sha256"
+  curl -sL --fail -o "$WORK/owner.tfs.sha256" "$obase/$OWNER_STEM.tfs.sha256"
   sha256_check "$OWNER_EXE_SHA256" "$WORK/owner.exe"
   sha256_check "$OWNER_IMAGE_SHA256" "$WORK/owner.tfs"
-  for f in "$OWNER_STEM" "$OWNER_STEM.tfs"; do
-    want="$( [ "$f" = "$OWNER_STEM" ] && echo "$OWNER_EXE_SHA256" || echo "$OWNER_IMAGE_SHA256" )"
-    got="$(awk -v a="$f" '$2 == a {print $1}' "$WORK/owner-SHA256SUMS.txt")"
-    [ "$got" = "$want" ] || { echo "::error::owner release sums disagree with the recipe pin for $f"; exit 1; }
+  for f in exe tfs; do
+    want="$( [ "$f" = "exe" ] && echo "$OWNER_EXE_SHA256" || echo "$OWNER_IMAGE_SHA256" )"
+    got="$(cut -d' ' -f1 "$WORK/owner.$f.sha256")"
+    [ "$got" = "$want" ] || { echo "::error::owner release sidecar disagrees with the recipe pin for $f"; exit 1; }
   done
   odir="$STORE/runtimes/$OWNER_STORE_ID"
   cp "$WORK/owner.exe" "$odir/$OWNER_STEM" && chmod 755 "$odir/$OWNER_STEM"
