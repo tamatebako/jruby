@@ -4,7 +4,7 @@ schema_version: 1
 # dist is bytecode + the ruby home with every platform's jffi stub
 # (lib/jni/), so ONE asset serves all triplets. Every platform key below
 # names the SAME universal artifact with the SAME digest — the registry
-# grammar consequence TODO.jruby/02 item 4 pins: the triplet binding of
+# grammar consequence: the triplet binding of
 # a composed jruby comes from the java OWNER pair, never from this image.
 # Rendered by the publish job (sed tokens from the built sidecars) and
 # landed on main by bot PR (the CLI refuses kind: runtime — runtimes
@@ -16,7 +16,7 @@ schema_version: 1
 # Platform matrix: temurin owner coverage is the constraint
 # (tamatebako/tebako-runtime-openjdk v2.5.0 ships macos-arm64 + linux-gnu-x86_64 +
 # windows-ucrt64). This first release declares the two POSIX rows the
-# acceptance gate covers (TODO.jruby/02); windows-ucrt64 is a named
+# acceptance gate covers; windows-ucrt64 is a named
 # follow-up (the universal image already serves it — the row lands with
 # its CI leg, never silently).
 payloads:
@@ -27,11 +27,11 @@ payloads:
     implementation: jruby
     platforms:
       aarch64-macos:
-        artifact: tebako-runtime-2.5.0-10.1.1.0-universal.tfs
-        sha256: 'd41773733c8192d94772e59f89e8ec4f38631a7efc96b77faab6a37481799652'
+        artifact: tebako-runtime-2.8.21-10.1.1.0-universal.tfs
+        sha256: '8c4042a18e651bc50966dde55ce23a11c7c981bc60e91cbcf82801499f9975fe'
       x86_64-linux-gnu:
-        artifact: tebako-runtime-2.5.0-10.1.1.0-universal.tfs
-        sha256: 'd41773733c8192d94772e59f89e8ec4f38631a7efc96b77faab6a37481799652'
+        artifact: tebako-runtime-2.8.21-10.1.1.0-universal.tfs
+        sha256: '8c4042a18e651bc50966dde55ce23a11c7c981bc60e91cbcf82801499f9975fe'
     release:
-      ref: tfs:github:tamatebako/tebako-runtime-jruby:v2.5.0
+      ref: tfs:github:tamatebako/tebako-runtime-jruby:v2.8.21
   default: '10.1.1.0'
