@@ -15,7 +15,11 @@ name: build-payload
 # by name at dispatch — the shard's abi:"none" sentinel). The publish job uploads all of it, derives the monoliths
 # (manifest.json + SHA256SUMS.txt, trr#140) from the shards + sidecars,
 # renders the registry entry from manifests/registry.yaml, and lands it
-# by bot PR. `tebako publish` is NOT used: the CLI refuses kind: runtime.
+# by bot PR. The bot PR rides the CI PAT (tebako#686): a
+# GITHUB_TOKEN-authored PR never triggers pull_request workflows, so
+# its checks would pend forever and auto-merge never fire — and the
+# legs below skip the bot PR's registry-only file set.
+# `tebako publish` is NOT used: the CLI refuses kind: runtime.
 #
 # PIN DISCIPLINE (the owner's rule): this workflow carries NO version or
 # digest literals. Tebakofile is the SSOT — the `tools:` block pins the
@@ -40,11 +44,45 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Registry-only detection (tebako#686): the tag run's publish job
+  # lands tpkg-registry.yaml by bot PR, and such a PR's whole change
+  # set is that one file. The decision rides the FILES, never the
+  # publish/* branch-name convention: the image/pair legs skip exactly
+  # this file set; every other PR — and every non-PR event, where this
+  # job never runs — builds unchanged.
+  changes:
+    name: registry-only change detection
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      registry_only: ${{ steps.detect.outputs.registry_only }}
+    steps:
+      - name: Detect the registry-only file set
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          files="$(gh pr view "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" \
+            --json files --jq '[.files[].path] | sort | join(",")')"
+          echo "changed files: $files"
+          if [ "$files" = "tpkg-registry.yaml" ]; then
+            echo "registry_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "registry_only=false" >> "$GITHUB_OUTPUT"
+          fi
   image:
     # The UNIVERSAL env image, built once (the dist has no per-platform
     # variants; mkimage is not byte-reproducible across legs — the
     # created timestamp — so ONE leg's image is THE published asset).
     name: image / universal
+    needs: changes
+    # tebako#686: a registry-only bot PR skips the legs (its change set
+    # is exactly tpkg-registry.yaml). A skipped changes job — every
+    # non-PR event — never suppresses the legs, and neither does a
+    # detection failure (a missing output reads as "not registry-only":
+    # the safe default is to build).
+    if: github.event_name != 'pull_request' || needs.changes.outputs.registry_only != 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,8 +122,12 @@ jobs:
     # Per triplet: the wrapper exe + sidecar + the per-triplet shard, and
     # the smokes against THIS platform's published temurin owner.
     name: pair / ${{ matrix.platform.triplet }}
+    needs: [changes, image]
+    # tebako#686: same registry-only skip as the image leg; the
+    # needs.image.result arm keeps today's implicit "the image
+    # succeeded" dependency exact under an explicit if.
+    if: needs.image.result == 'success' && (github.event_name != 'pull_request' || needs.changes.outputs.registry_only != 'true')
     runs-on: ${{ matrix.platform.os }}
-    needs: image
     strategy:
       fail-fast: false
       matrix:
@@ -181,7 +223,11 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      # The checkout rides the CI PAT so the registry bot branch's push
+      # is the PAT's doing as well (tebako#686 — the publish step below).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
       - name: Collect payloads (all legs)
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -295,7 +341,13 @@ jobs:
       # main is branch-protected (and the GitHub-Actions bypass is not
       # available on this plan): the registry lands by bot PR + auto-merge,
       # never by direct push. Idempotent across re-runs of the same tag.
+      # The PR is created AND merged under the CI PAT (tebako#686): a
+      # GITHUB_TOKEN-authored PR never triggers pull_request workflows,
+      # so its checks would sit pending forever and auto-merge would
+      # never fire.
       - name: Publish the registry entry via pull request
+        env:
+          GH_TOKEN: ${{ secrets.TEBAKO_CI_PAT_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "tebako-ci"
