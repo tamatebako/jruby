@@ -219,6 +219,15 @@ jobs:
     name: publish
     if: startsWith(github.ref, 'refs/tags/')
     needs: [image, pair]
+    # A job-level block REPLACES the workflow-level grant, so contents +
+    # pull-requests are restated; attestations/id-token arm the SLSA L3
+    # provenance step at the job tail (same tag gate — push/PR runs
+    # never run this job, so they never attest).
+    permissions:
+      contents: write
+      pull-requests: write
+      attestations: write
+      id-token: write
     runs-on: macos-14
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -323,6 +332,32 @@ jobs:
               gh release upload --clobber "$tag" --repo tamatebako/tebako-runtime-jruby "$mono"
             fi
           done
+
+      # SLSA L3 provenance over the exact bytes this tag ships — the
+      # universal image + its sidecar, each triplet's wrapper exe +
+      # sidecar + shard, and the manifest.json + SHA256SUMS.txt trust
+      # anchors. The staging copy mirrors the upload loops' name lists
+      # verbatim, so the non-shipped sibling payload-*.yaml files are
+      # never attested. Gated with the job (tag runs only — push/PR runs
+      # never attest).
+      - name: Stage the attestation subjects (the exact served names)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p attest-staging
+          cp "out/image/$RUNTIME_IMAGE_STEM.tfs" "out/image/$RUNTIME_IMAGE_STEM.tfs.sha256" attest-staging/
+          for shard in out/pair-*/tebako-runtime-*.manifest.json; do
+            dir="$(dirname "$shard")"
+            stem="$(basename "$shard" .manifest.json)"
+            cp "$dir/$stem" "$dir/$stem.sha256" "$shard" attest-staging/
+          done
+          cp manifest.json SHA256SUMS.txt attest-staging/
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: attest-staging/*
       # The registry mirrors resolution fields only (L3): the env image
       # is the named artifact per platform — the SAME universal asset
       # under every platform key (a consequence of the pinned universal
