@@ -24,6 +24,19 @@
 # <TOOL>_ASSET/<TOOL>_SHA256 (link-unit names a .tar.gz, the CLIs name
 # bare binaries).
 #
+# tebako#716's language segment of the runtime pair's name is this
+# runtime's distribution identity — the flavor's `implementation`
+# ("jruby", an implementation of the ruby engine): new publishes spell
+# tebako-runtime-<line>-jruby-<ver>-<platform>. No era gate: a re-run of
+# an old tag checks out that tag's own pins.rb / tools/build and
+# composes that ref's names, self-consistently — the already-published
+# segment-less spellings never change (spec 05 §2's era law). The
+# segment flows from the SELECTED flavor block, never a hardcoded value.
+# The owner pair's stem (OWNER_STEM, a FOREIGN name this feedstock
+# fetches) follows the PINNED owner release's own era: the recipe's
+# owner_smoke block gains an `implementation` key when its pin moves to
+# a post-#716 owner release (absent = the segment-less spelling).
+#
 # NEVER emit a bare TEBAKO_VERSION: in the sibling feedstocks tools/build
 # uses that name for the RUNTIME release line with an env override, so a
 # tools-version export silently clobbers the runtime pin (the 2026-08-27
@@ -70,6 +83,7 @@ runtime = recipe.fetch("runtime")
 # present. A missing pin is a named error either way (spec 00 §9).
 wrapper_tebako = flavor_block["wrapper_tebako"] || runtime.fetch("wrapper_tebako")
 wrapper_shas = flavor_block["wrapper_sha256"] || runtime.fetch("wrapper_sha256")
+implementation = flavor_block.fetch("implementation")
 pkg_version = flavor_block.dig("upstream", "version") ||
               die("Tebakofile flavors.#{flavor}.upstream.version missing")
 
@@ -78,7 +92,7 @@ pairs = {
   "PKG_NAME" => recipe.fetch("name"),
   "PKG_VERSION" => pkg_version,
   "FLAVOR" => flavor,
-  "IMPLEMENTATION" => flavor_block.fetch("implementation"),
+  "IMPLEMENTATION" => implementation,
 }
 
 unless ARGV.include?("--release-only")
@@ -114,7 +128,10 @@ unless ARGV.include?("--release-only")
   pairs["WRAPPER_ASSET"] = "tebako-runtime-launcher-#{wrapper_tebako}-#{platform}#{exe}"
   pairs["WRAPPER_SHA256"] = wrapper_shas[platform] ||
                             die("Tebakofile: no wrapper_sha256.#{platform} pin for flavor '#{flavor}'")
-  pairs["RUNTIME_STEM_BASE"] = "tebako-runtime-#{wrapper_tebako}-#{pkg_version}"
+  # The pair's name carries tebako#716's language segment — the flavor's
+  # implementation ("jruby"): tebako-runtime-<line>-jruby-<ver>-<platform>.
+  # tools/build composes the same grammar from the same recipe values.
+  pairs["RUNTIME_STEM_BASE"] = "tebako-runtime-#{wrapper_tebako}-#{implementation}-#{pkg_version}"
   pairs["RUNTIME_STEM"] = "#{pairs['RUNTIME_STEM_BASE']}-#{platform}"
   # The env image is UNIVERSAL (the dist ships every platform's jffi
   # stub): ONE asset serves all triplets; each per-triplet shard's
@@ -139,9 +156,14 @@ unless ARGV.include?("--release-only")
   if (owner = flavor_block["owner_smoke"])
     owner_version = owner.fetch("version")
     owner_line = owner.fetch("tebako")
+    # tebako#716, on a FOREIGN name: the pinned owner release's own era
+    # rules the fetch spelling. The pin block declares `implementation`
+    # (e.g. temurin) once it names a post-#716 owner release; absent, the
+    # pair's segment-less spelling is composed (the v2.8.21 pin).
+    owner_infix = owner["implementation"] ? "#{owner.fetch('implementation')}-" : ""
     pairs["OWNER_REPO"] = owner.fetch("repo")
     pairs["OWNER_RELEASE"] = owner.fetch("release")
-    pairs["OWNER_STEM"] = "tebako-runtime-#{owner_line}-#{owner_version}-#{platform}"
+    pairs["OWNER_STEM"] = "tebako-runtime-#{owner_line}-#{owner_infix}#{owner_version}-#{platform}"
     pairs["OWNER_STORE_ID"] = "java-#{owner_version}-#{owner_line}-#{platform}"
     pairs["OWNER_EXE_SHA256"] = owner.fetch("exe_sha256")[platform] ||
                                 die("Tebakofile: no owner_smoke.exe_sha256.#{platform} pin")
