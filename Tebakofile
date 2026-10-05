@@ -88,6 +88,12 @@ flavors:
     # the first 6-space `version:` in the flavor, which must be the
     # upstream's (the truffleruby 2026-09-07 local gate caught
     # owner_smoke.version shadowing it).
+    #
+    # tebako#716: the fetched owner pair's ASSET name follows the pinned
+    # owner release's own era. v2.8.21's assets are the segment-less
+    # spelling, so this block carries NO `implementation` key; the bump
+    # to a post-#716 owner release adds `implementation: temurin` here,
+    # and tools/pins.rb's OWNER_STEM composes the segmented name from it.
     owner_smoke:
       repo: "tamatebako/tebako-runtime-openjdk"
       release: "v2.8.21"
